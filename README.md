@@ -1,6 +1,6 @@
 # micromdm_munki
 
-First draft - trigger micromdm via Munki.
+Trigger micromdm via Munki.
 
 a) The App or the Profile are assigned to a Munki client via nokpg.plists
 
@@ -10,3 +10,7 @@ There is no authentication, but we do check if the action is OK
 - only remove if it is in managed_uninstalls or optional_installs
 
 c) then the script tell micromdm to do so
+
+------
+
+First draft - alpha
