@@ -1,10 +1,9 @@
 # micromdm_munki
 
-Add Appstore Apps to Munki:
-
-updateAppstoreApps.py lists all the VPP apps associated to micromdm and adds them macOS Apps to Munki as nopkg
-
-
+Add Appstore Apps to Munki:\\
+updateAppstoreApps.py lists all the VPP apps associated to micromdm and adds them macOS Apps to Munki as nopkg\\
+importProfile.py should be called with a mobilecinfig as argument. If adds the Profile as nopkg.
+ 
 The process: Trigger micromdm via Munki.
 
 a) The Apps or the Profiles are assigned to a Munki client via nokpg.plists
