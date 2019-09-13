@@ -20,5 +20,4 @@ updateAppstoreApps.py lists all the VPP apps associated to micromdm and adds the
 importProfile.py should be called with a .mobileconfig as argument. If adds the Profile as nopkg.
 
 ------
-
 First draft - alpha
