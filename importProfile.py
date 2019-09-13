@@ -19,26 +19,29 @@ icon_location=munkiFolder+"/icons_/"
 
 mobileconfigs=(sys.argv[1:])
 if (mobileconfigs == [] ):
-    mobileconfigs=["/Users/tom/Nextcloud/Tom/MicroMDM/MobileConfigs/PPPC_System.mobileconfig"]
+    mobileconfigs=["/Users/tom/Cloud/MicroMDM/MobileConfigs/DesktopPicture.mobileconfig"]
 
 """
     FUNCTIONS
 """
     
-def readSignedPlist(plist_path):
-    plist = subprocess.check_output( ['openssl', 'smime', '-in', plist_path, '-inform', 'der', '-verify', '-noverify'],stderr=open('/dev/null', 'w'))
-    return plistlib.readPlistFromString(plist)
-    
+def readPlist(plist_path):
+    try:
+        plist = subprocess.check_output( ['openssl', 'smime', '-in', plist_path, '-inform', 'der', '-verify', '-noverify'],stderr=open('/dev/null', 'w'))
+        return plistlib.readPlistFromString(plist)
+    except: 
+        return plistlib.readPlist(plist_path)
+        
 def preinstall_script(profileName,profileVersion,profileIdentifier):
     return """#!/bin/bash
 seriennummer=$( system_profiler SPHardwareDataType | grep 'Serial Number (system)' | awk '{print $NF}' )
-curl "https://munki.ixpert.at/micromdm/api.py?seriennummer=$seriennummer&amp;profile="""+profileName+""".mobileconfig&amp;action=installProfile"
+curl "https://munki.ixpert.at/micromdm/api.py?seriennummer=$seriennummer&amp;profile="""+profileName+"""&amp;action=installProfile"
 exit 0"""
     
 def uninstall_script(profileName,profileVersion,profileIdentifier):
     return """#!/bin/bash
 seriennummer=$( system_profiler SPHardwareDataType | grep 'Serial Number (system)' | awk '{print $NF}' )
-curl "https://munki.ixpert.at/micromdm/api.py?seriennummer=$seriennummer&amp;profile="""+profileIdentifier+"""&amp;action=removeProfile"
+curl "https://munki.ixpert.at/micromdm/api.py?seriennummer=$seriennummer&amp;profile="""+profileName+"""&amp;action=removeProfile"
 exit 0"""
 
 def installcheck_script(profileName,profileVersion,profileIdentifier):
@@ -57,7 +60,7 @@ do
     dasProfile=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:ProfileIdentifier" /tmp/profile.${myProfile}.plist )
     if [ "$myProfile" == "$dasProfile" ]; then
         #echo $dasProfile
-        dieVersion=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:ProfileVersion" /tmp/profile.${myProfile}.plist )
+        dieVersion=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:PayloadDescription" /tmp/profile.${myProfile}.plist )
         #echo $dieVersion
         if [ "$myVersion" != "$dieVersion" ]; then
             echo "Profil $myProfile in falscher Version $dieVersion installiert ... Version $myVersion wird installiert"
@@ -99,21 +102,22 @@ default_pkginfo={
 for aProfile in mobileconfigs:
     print aProfile
     profileName=os.path.splitext(os.path.basename(aProfile))[0]
-    the_profile=readSignedPlist(aProfile)
-    print the_profile
-    profileVersion=str(the_profile["PayloadVersion"])
+    the_profile=readPlist(aProfile)
+    #print the_profile
+    profileVersion=the_profile["PayloadDescription"]
     profileIdentifier=the_profile["PayloadIdentifier"]
     try:
       myInfo=plistlib.readPlist(profile_location+profileName+".plist")
     except: 
         myInfo=default_pkginfo
         myInfo["name"] = "Profile - "+profileName
+        myInfo["display_name"] = "Profile - "+profileName
     if ( myInfo["version"] != profileVersion ):
         myInfo["version"] = profileVersion
         myInfo["_metadata"]["creation_date"] = datetime.datetime.now()
-        myInfo["uninstall_script"] = uninstall_script(profileName,profileVersion,profileIdentifier)
-        myInfo["preinstall_script"] = preinstall_script(profileName,profileVersion,profileIdentifier)
-        myInfo["installcheck_script"] = installcheck_script(profileName,profileVersion,profileIdentifier)
-        print profile_location+profileName+".plist"
-        plistlib.writePlist(myInfo, profile_location+profileName+".plist")
+    myInfo["uninstall_script"] = uninstall_script(profileName,profileVersion,profileIdentifier)
+    myInfo["preinstall_script"] = preinstall_script(profileName,profileVersion,profileIdentifier)
+    myInfo["installcheck_script"] = installcheck_script(profileName,profileVersion,profileIdentifier)
+    print profile_location+profileName+".plist"
+    plistlib.writePlist(myInfo, profile_location+profileName+".plist")
     
