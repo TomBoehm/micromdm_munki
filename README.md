@@ -1,6 +1,7 @@
 # micromdm_munki
 
 Add Appstore Apps to Munki:
+
 updateAppstoreApps.py lists all the VPP apps associated to micromdm and adds the macOS Apps to Munki as nopkg
 
 
