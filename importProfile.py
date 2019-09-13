@@ -60,7 +60,7 @@ do
     dasProfile=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:ProfileIdentifier" /tmp/profile.${myProfile}.plist )
     if [ "$myProfile" == "$dasProfile" ]; then
         #echo $dasProfile
-        dieVersion=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:PayloadDescription" /tmp/profile.${myProfile}.plist )
+        dieVersion=$( /usr/libexec/PlistBuddy -c "print _computerlevel:$i:ProfileDescription" /tmp/profile.${myProfile}.plist )
         #echo $dieVersion
         if [ "$myVersion" != "$dieVersion" ]; then
             echo "Profil $myProfile in falscher Version $dieVersion installiert ... Version $myVersion wird installiert"
