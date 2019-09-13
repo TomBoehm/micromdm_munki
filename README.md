@@ -8,8 +8,7 @@ The process: Trigger micromdm via Munki.
 
 a) The Apps or the Profiles are assigned to a Munki client via nokpg.plists
 
-b) The Client sends a request to the api.py script 
-
+b) The Client sends a request to the api.py script  
 There is no authentication, but we do check if the action is valid 
 - only install if it is in managed_installs or optional_installs
 - only remove if it is in managed_uninstalls or optional_installs
