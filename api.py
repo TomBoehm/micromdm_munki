@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 print "Content-type: text/html\n"
 print "" 
 
@@ -16,26 +18,28 @@ import os
 """
     SETTINGS
 """
-hostname='https://micromdm.ixpert.at/'
-apiKey="AchWieGutDassNiemadWeiss"
-tokenLoc='/home/micromdm/VPP/sToken_for_micromdm.vpptoken'
-profileFolder='/var/lib/nethserver/nextcloud/25150916-cc66-1037-8ed2-713ef7a57559/files/MicroMDM/MobileConfigs/'
-munkiFolder='/var/lib/nethserver/vhost/munki.ixpert.at'
+hostname='https://example.com/'
+apiKey="---the apiKey---"
+tokenLoc='/path/to/sToken_for_micromdm.vpptoken'
+profileFolder='/path/to/MobileConfigs/'
+munkiFolder='/path/to/munkirepo'
 
 TEST_VALUES = {
-    "seriennummer": "C02W40ESHTDD",
-    "appid": "425264550",
-    "action": "removeProfile",
+    "seriennummer": "C0XXXXXXXXXX",
+    "appid": "409183694",
+    "action": "installApp",
     #"removeProfile" - "installProfile" - "installApp" - "listAllApps"
     "profile": "Dock.mobileconfig",
     # tom.dock.left - Dock.mobileconfig
 }
 
+iOS_list=["C1XXXXXXXXXX", "C2XXXXXXXXXX"]
+
 """
     FUNCTIONS
 """
 def getUdidForSerial(serial, hostname, apiKey):
-    response = requests.get(
+    response = requests.post(
         hostname+"v1/devices",
         headers={'Content-Type': 'application/json',},
         auth=('micromdm', apiKey),
@@ -51,15 +55,21 @@ def getPricing():
 
 def serialAssociatedToDevice(appid, seriennummer):
     # ist die App schon der Seriennummer zugewiesen?
-    licenses=json.loads(requests.get(vPPServiceConfigSrv["getLicensesSrvUrl"], data=json.dumps({"sToken": sToken,"serialNumber": seriennummer})).content)["licenses"]
-    for license in licenses:
-        if ( appid == license["adamIdStr"] ) :
-            return 1
-    return 0
+    try:
+        licenses=json.loads(requests.get(vPPServiceConfigSrv["getLicensesSrvUrl"], data=json.dumps({"sToken": sToken,"serialNumber": seriennummer})).content)["licenses"]
+        for license in licenses:
+            if ( appid == license["adamIdStr"] ) :
+                return 1
+        return 0
+    except:
+        return 0
 
 def getNameOfApp(appid) :
     appInfo=requests.get("https://uclient-api.itunes.apple.com/WebObjects/MZStorePlatform.woa/wa/lookup?version=2&id="+appid+"&p=mdm-lockup&caller=MDM&platform=enterprisestore&cc=at&l=de").content
-    return json.loads(appInfo)["results"][appid]["name"]    
+    try:
+        return json.loads(appInfo)["results"][appid]["name"]  
+    except:
+        return ""
 
 def postMdmCommand(data) :
     response = requests.post( hostname+"v1/commands" , headers={ 'Content-Type': 'application/json', }, auth=('micromdm', apiKey), data=data)
@@ -74,21 +84,26 @@ def readFile(fileLocation):
         print "ERROR: Could not read " + fileLocation
         
 def test_valid_request(manifest, package, search_keys) :
-    this_manifest=plistlib.readPlist( munkiFolder+"/manifests/"+manifest)
-    for akey in search_keys:
-        if akey in this_manifest:
-            if package in this_manifest[akey]:
-                return True
-    if 'included_manifests' in this_manifest:
-        for a_manifest in this_manifest["included_manifests"]:
-            if  test_valid_request(a_manifest, package, search_keys) == True:
-                return True
-    return False
+    if manifest not in iOS_list:
+        this_manifest=plistlib.readPlist( munkiFolder+"/manifests/"+manifest)
+        for akey in search_keys:
+            if akey in this_manifest:
+                if package in this_manifest[akey]:
+                    return True
+        if 'included_manifests' in this_manifest:
+            for a_manifest in this_manifest["included_manifests"]:
+                if  test_valid_request(a_manifest, package, search_keys) == True:
+                    return True
+        return False
+    else:
+        return True
 
-def readSignedPlist(plist_path):
-    with open(os.devnull, 'w') as devnull: 
-        plist = subprocess.check_output( ['openssl', 'smime', '-in', plist_path, '-inform', 'der', '-verify', '-noverify'], stderr=devnull)
+def readPlist(plist_path):
+    try:
+        plist = subprocess.check_output( ['openssl', 'smime', '-in', plist_path, '-inform', 'der', '-verify', '-noverify'],stderr=open('/dev/null', 'w'))
         return plistlib.readPlistFromString(plist)
+    except: 
+        return plistlib.readPlist(plist_path)
 
 
 """
@@ -143,7 +158,7 @@ if ( action == "listAllApps" ) :
     for asset in assets :
         appid = asset["adamIdStr"]
         titel = getNameOfApp(appid)
-        print "ID: " + appid + "   Titel: " + titel 
+        print "ID: " + appid + "   Titel: " + titel.encode('ascii', 'ignore').decode('ascii')
     
 if ( action == "listApps4Serial" ) :
     licenses=json.loads(requests.get(vPPServiceConfigSrv["getLicensesSrvUrl"], data=json.dumps({"sToken": sToken,"serialNumber": seriennummer})).content)["licenses"]
@@ -153,18 +168,18 @@ if ( action == "listApps4Serial" ) :
         print "ID: " + appid + "   Titel: " + titel
             
 if ( action == "installProfile" ) :
-    if test_valid_request(seriennummer, getNameOfApp(appid), ['managed_installs','optional_installs']):
+    if (test_valid_request(seriennummer, "Profile - "+profile, ['managed_installs','optional_installs'])) or ( profile == "enroll") :
         udid= getUdidForSerial (seriennummer, hostname, apiKey)
-        profile = base64.b64encode( readFile(profileFolder + profile  ) )
+        profile = base64.b64encode( readFile(profileFolder + profile + ".mobileconfig" ) )
         postMdmCommand(json.dumps({"request_type": "InstallProfile", "udid": udid, "payload": profile}))
     else:
         print "The Profile " + profile + " is not allowed for " + seriennummer 
         
 if ( action == "removeProfile" ) :
-    if test_valid_request(seriennummer, getNameOfApp(appid), ['managed_uninstalls','optional_installs']):
-        #the_profile=readSignedPlist(profileFolder + profile)
-        #identifier=the_profile['PayloadIdentifier']
+    the_profile=readPlist(profileFolder + profile + ".mobileconfig" )
+    identifier=the_profile['PayloadIdentifier']
+    if test_valid_request(seriennummer, "Profile - "+profile, ['managed_uninstalls','optional_installs']):
         udid= getUdidForSerial (seriennummer, hostname, apiKey)
-        postMdmCommand(json.dumps({"request_type": "RemoveProfile", "udid": udid, "identifier": profile}))
+        postMdmCommand(json.dumps({"request_type": "RemoveProfile", "udid": udid, "identifier": identifier}))
     else:
         print "The Profile " + profile + " can not be removed from " + seriennummer
