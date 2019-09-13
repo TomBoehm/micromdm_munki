@@ -6,8 +6,8 @@ a) The Apps or the Profiles are assigned to a Munki client via nokpg.plists
 
 b) The Client sends a request to the api.py script  
 There is no authentication, but we do check if the action is valid 
-- only install if it is in managed_installs or optional_installs
-- only remove if it is in managed_uninstalls or optional_installs
+- only install if it is in managed_installs or optional_installs for that client
+- only remove if it is in managed_uninstalls or optional_installs for that client
 
 c) the api.py script tells micromdm to perform the requested action:
   - installApp
